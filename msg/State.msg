@@ -1,0 +1,5 @@
+uint32 STATE_UNINIT=0
+uint32 STATE_TIMEOUT=1
+uint32 STATE_OK=2
+uint32 STATE_FAIL=3
+uint32 value
