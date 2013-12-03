@@ -64,23 +64,23 @@ catkin_package(
 
 ## Specify additional locations of header files
 ## Your package locations should be listed before other locations
-# include_directories(include)
+include_directories(include)
 include_directories(
   ${catkin_INCLUDE_DIRS}
 )
 
 ## Declare a cpp library
-# add_library(heartbeat
-#   src/${PROJECT_NAME}/heartbeat.cpp
-# )
+add_library(heartbeat
+  src/${PROJECT_NAME}/HeartbeatClient.cpp
+)
 
 ## Declare a cpp executable
 add_executable(
-  heartbeat_server src/heartbeat_server.cpp
+  server_node src/server_node.cpp
 )
 
 add_executable(
-  heartbeat_client src/heartbeat_client.cpp
+  client_node src/client_node.cpp
 )
 
 ## Add cmake target dependencies of the executable/library
@@ -89,13 +89,15 @@ add_executable(
 
 ## Specify libraries to link a library or executable target against
 target_link_libraries(
-  heartbeat_server
+  server_node
   ${catkin_LIBRARIES}
+  heartbeat
 )
 
 target_link_libraries(
-  heartbeat_client
+  client_node
   ${catkin_LIBRARIES}
+  heartbeat
 )
 
 #############

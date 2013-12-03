@@ -10,7 +10,7 @@ ros::Publisher heartbeat_pub;
 bool set_state(heartbeat::SetState::Request &req,
 		heartbeat::SetState::Response &res) {
 	
-	if ((state.value == heartbeat::State::STATE_UNINIT) && (req.state.value != heartbeat::State::STATE_OK)) {
+	if ((state.value == heartbeat::State::UNINIT) && (req.state.value != heartbeat::State::OK)) {
 		res.success.data = false;
 	} else {
 		state = req.state;
@@ -28,7 +28,7 @@ int main(int argc, char **argv) {
 
 	ros::init(argc, argv, "heartbeat_server");
 
-	state.value = heartbeat::State::STATE_UNINIT;
+	state.value = heartbeat::State::UNINIT;
 
 	ros::NodeHandle n;
 	ros::Rate loop_rate(2);
