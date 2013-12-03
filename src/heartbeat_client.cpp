@@ -8,12 +8,13 @@
 class HeartbeatClient {
 private:
 	ros::NodeHandle& nh_;
-	ros::CallbackQueue cb_queue_;
+	ros::CallbackQueue callback_queue_;
 	ros::AsyncSpinner spinner_;
 	ros::Subscriber sub_;
 	ros::ServiceClient service_;
 	ros::Timer timer_;
 	heartbeat::State state_;
+	double timeout_;
 
 	void timer_callback(const ros::TimerEvent&);
 	void heartbeat_callback(const heartbeat::State::ConstPtr& msg);
@@ -38,21 +39,34 @@ void HeartbeatClient::heartbeat_callback(const heartbeat::State::ConstPtr& msg) 
 }
 
 HeartbeatClient::HeartbeatClient(ros::NodeHandle& nh) :
-		nh_(nh), spinner_(1, &cb_queue_) {
+		nh_(nh), spinner_(1, &callback_queue_) {
+	ros::TimerOptions timer_ops;
+	ros::SubscribeOptions sub_ops;
 
+	ros::param::param<double>("/heartbeat/timeout", timeout_, 1.0);
+
+	timer_ops.autostart = false;
+	timer_ops.callback = boost::bind(&HeartbeatClient::timer_callback, this, _1);
+	timer_ops.callback_queue = &callback_queue_;
+	timer_ops.oneshot = false;
+	timer_ops.period = ros::Duration(timeout_);
+	timer_ops.tracked_object = ros::VoidPtr();
+	timer_ = nh_.createTimer(timer_ops);
+
+	sub_ops.init<heartbeat::State>("heartbeat", 1, boost::bind(&HeartbeatClient::heartbeat_callback, this, _1));
+	sub_ops.tracked_object = ros::VoidPtr();
+	sub_ops.callback_queue = &callback_queue_;
+	sub_ = nh_.subscribe(sub_ops);
+
+	service_ = nh_.serviceClient<heartbeat::SetState>("set_state");
 }
 
 HeartbeatClient::~HeartbeatClient(void) {
 	stop();
 }
 
-void HeartbeatClient::start(void) {
-	ros::SubscribeOptions ops = ros::SubscribeOptions::create<heartbeat::State>(
-			"heartbeat", 1, boost::bind(&HeartbeatClient::heartbeat_callback, this, _1), ros::VoidPtr(), &this->cb_queue_);
 
-	timer_ = nh_.createTimer(ros::Duration(0.2), boost::bind(&HeartbeatClient::timer_callback, this, _1));
-	service_ = nh_.serviceClient<heartbeat::SetState>("set_state");
-	sub_ = nh_.subscribe(ops);
+void HeartbeatClient::start(void) {
 	spinner_.start();
 	timer_.start();
 }
@@ -66,9 +80,12 @@ bool HeartbeatClient::setState(heartbeat::State& state) {
 	heartbeat::SetState req_state;
 
 	req_state.request.state.value = state.value;
-	service_.call(req_state);
 
-	return req_state.response.success.data; // TODO: basta return service_.call() ?
+	if (!service_.call(req_state)) {
+		return false;
+	}
+
+	return req_state.response.success.data;
 }
 
 heartbeat::State HeartbeatClient::getState(void) {
@@ -93,6 +110,11 @@ heartbeat::State HeartbeatClient::getState(void) {
  }
  */
 
+
+void timerCallback(const ros::TimerEvent& e) {
+	ROS_INFO("Timeout!");
+}
+
 int main(int argc, char **argv) {
 	heartbeat::State state;
 	heartbeat::State req_state;
@@ -102,8 +124,8 @@ int main(int argc, char **argv) {
 
 	ros::NodeHandle n;
 	ros::Rate loop_rate(0.5);
-	HeartbeatClient hb(n);
 
+	HeartbeatClient hb(n);
 	hb.start();
 
 	while (ros::ok()) {
