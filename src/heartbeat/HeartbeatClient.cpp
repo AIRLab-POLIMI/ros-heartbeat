@@ -52,14 +52,20 @@ void HeartbeatClient::stop(void) {
 	spinner_.stop();
 }
 
-bool HeartbeatClient::setState(heartbeat::State& state) {
+bool HeartbeatClient::setState(heartbeat::State& to) {
 	heartbeat::SetState req_state;
 
-	req_state.request.state.value = state.value;
+	req_state.request.from.value = state_.value;
+	req_state.request.to.value = to.value;
 
 	if (!service_.call(req_state)) {
 		return false;
 	}
 
-	return req_state.response.success.data;
+	if (req_state.response.current.value != to.value) {
+		state_.value = req_state.response.current.value;
+		return false;
+	}
+
+	return true;
 }

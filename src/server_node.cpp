@@ -9,17 +9,18 @@ ros::Publisher heartbeat_pub;
 
 bool set_state(heartbeat::SetState::Request &req,
 		heartbeat::SetState::Response &res) {
-	
-	if ((state.value == heartbeat::State::UNINIT) && (req.state.value != heartbeat::State::OK)) {
-		res.success.data = false;
+
+	if (req.from.value != state.value) {
+		ROS_INFO("State transition %u -> %u rejected: current state is %u", req.from.value, req.to.value, state.value);
+	} else if ((state.value == heartbeat::State::UNINIT) && (req.to.value != heartbeat::State::OK)) {
+		ROS_INFO("State transition not allowed: %u -> %u", req.from.value, req.to.value);
 	} else {
-		state = req.state;
-		res.success.data = true;
+		state.value = req.to.value;
 		heartbeat_pub.publish(state);
+		ROS_INFO("State updated: %u -> %u", req.from.value, state.value);
 	}
 	
-	ROS_INFO("set_state request: %u -> %u", state.value, req.state.value);
-	ROS_INFO("sending back response: [%u]", res.success.data);
+	res.current.value = state.value;
 	return true;
 }
 
