@@ -27,12 +27,15 @@ find_package(catkin REQUIRED COMPONENTS
 ## Generate messages in the 'msg' folder
 add_message_files(
   FILES
+  Heartbeat.msg
   State.msg
 )
 
 ## Generate services in the 'srv' folder
 add_service_files(
   FILES
+  RegisterNode.srv
+  UnregisterNode.srv
   SetState.srv
 )
 
@@ -72,6 +75,7 @@ include_directories(
 ## Declare a cpp library
 add_library(heartbeat
   src/${PROJECT_NAME}/HeartbeatClient.cpp
+  src/${PROJECT_NAME}/HeartbeatServer.cpp
 )
 
 ## Declare a cpp executable
