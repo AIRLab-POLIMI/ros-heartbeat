@@ -4,6 +4,7 @@
 #include "ros/ros.h"
 #include "ros/callback_queue.h"
 #include "heartbeat/State.h"
+#include "heartbeat/Heartbeat.h"
 
 class HeartbeatClient {
 private:
@@ -11,7 +12,10 @@ private:
 	ros::CallbackQueue _callback_queue;
 	ros::AsyncSpinner _spinner;
 	ros::Subscriber _state_sub;
+	ros::Publisher _heartbeat_pub;
 	ros::ServiceClient _state_service;
+	ros::ServiceClient _register_service;
+	ros::ServiceClient _unregister_service;
 	ros::Timer _state_timer;
 	heartbeat::State _state;
 	std::string _state_topic;

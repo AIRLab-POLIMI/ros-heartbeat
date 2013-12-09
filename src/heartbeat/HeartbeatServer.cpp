@@ -4,19 +4,25 @@
 #include "heartbeat/State.h"
 #include "heartbeat/SetState.h"
 
-void HeartbeatServer::heartbeat_callback(const heartbeat::Heartbeat::ConstPtr& msg) {
-	/*
-	 _heartbeat_timer.stop();
-	 _heartbeat_timer.start();
-	 _state.value = msg->value;
-	 */
-//	ROS_INFO("Heartbeat from node %s", msg.node_name.data.c_str());
+void HeartbeatServer::heartbeat_callback(
+		const heartbeat::Heartbeat::ConstPtr& msg) {
+	std::map<std::string, ros::Timer>::iterator it;
+
+	it = _registered_nodes.find(msg->node_name.data);
+
+	if (it != _registered_nodes.end()) {
+		ros::Timer& timer = it->second;
+		timer.stop();
+		timer.start();
+	}
+
+	ROS_INFO("Heartbeat from node %s", msg->node_name.data.c_str());
 }
 
 void HeartbeatServer::heartbeat_timeout(const ros::TimerEvent&) {
 	_state.value = heartbeat::State::TIMEOUT;
 	_state_pub.publish(_state);
-	ROS_INFO("Heartbeat timeout!");
+	ROS_WARN("Heartbeat timeout!");
 }
 
 bool HeartbeatServer::set_state(heartbeat::SetState::Request &req,
@@ -41,9 +47,10 @@ bool HeartbeatServer::set_state(heartbeat::SetState::Request &req,
 
 bool HeartbeatServer::register_node(heartbeat::RegisterNode::Request &req,
 		heartbeat::RegisterNode::Response &res) {
-	ros::Timer timer = _nh.createTimer(ros::Duration(req.timeout.data), &HeartbeatServer::heartbeat_timeout, this);
 
 	if (_registered_nodes.find(req.node_name.data) == _registered_nodes.end()) {
+		ros::Timer timer = _nh.createTimer(ros::Duration(req.timeout.data),
+				&HeartbeatServer::heartbeat_timeout, this);
 		_registered_nodes.insert(
 				std::pair<std::string, ros::Timer>(req.node_name.data, timer));
 		res.success = true;
@@ -82,11 +89,15 @@ HeartbeatServer::HeartbeatServer(ros::NodeHandle& nh) :
 	sub_ops.callback_queue = &_callback_queue;
 	_heartbeat_sub = _nh.subscribe(sub_ops);
 
-	_state_pub = _nh.advertise < heartbeat::State > ("state", 10);
+	_state_pub = _nh.advertise<heartbeat::State>("state", 10);
 
-	_set_state_service = _nh.advertiseService("set_state", &HeartbeatServer::set_state, this);
-	_register_node_service = _nh.advertiseService("register_node", &HeartbeatServer::register_node, this);
-	_unregister_node_service = _nh.advertiseService("unregister_node", &HeartbeatServer::unregister_node, this);
+	_set_state_service = _nh.advertiseService("/heartbeat/set_state",
+			&HeartbeatServer::set_state, this);
+	_register_node_service = _nh.advertiseService("/heartbeat/register_node",
+			&HeartbeatServer::register_node, this);
+	_unregister_node_service = _nh.advertiseService(
+			"/heartbeat/unregister_node", &HeartbeatServer::unregister_node,
+			this);
 }
 
 HeartbeatServer::~HeartbeatServer(void) {

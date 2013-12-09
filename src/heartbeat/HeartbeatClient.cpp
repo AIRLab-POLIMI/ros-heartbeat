@@ -1,6 +1,8 @@
 #include "heartbeat/HeartbeatClient.h"
 #include "ros/callback_queue.h"
 #include "heartbeat/SetState.h"
+#include "heartbeat/RegisterNode.h"
+#include "heartbeat/UnregisterNode.h"
 
 
 void HeartbeatClient::timer_callback(const ros::TimerEvent&) {
@@ -36,10 +38,34 @@ HeartbeatClient::HeartbeatClient(ros::NodeHandle& nh, float heartbeat_timeout) :
 	sub_ops.callback_queue = &_callback_queue;
 	_state_sub = _nh.subscribe(sub_ops);
 
-	_state_service = _nh.serviceClient<heartbeat::SetState>("set_state");
+	_state_service = _nh.serviceClient<heartbeat::SetState>("/heartbeat/set_state");
+	_register_service = _nh.serviceClient<heartbeat::RegisterNode>("/heartbeat/register_node");
+	_unregister_service = _nh.serviceClient<heartbeat::UnregisterNode>("/heartbeat/unregister_node");
 
 	if (_heartbeat_timeout != 0) {
+		heartbeat::RegisterNode register_node;
 
+
+		register_node.request.node_name.data = ros::this_node::getName();
+		register_node.request.timeout.data = heartbeat_timeout;
+
+
+		if (!_register_service.call(register_node)) {
+			ROS_INFO("Heartbeat register RPC failed");
+			return;
+		}
+
+		if (register_node.response.success) {
+			ros::AdvertiseOptions adv_ops;
+
+			adv_ops.init<heartbeat::Heartbeat>(_heartbeat_topic, 1);
+			adv_ops.callback_queue = &_callback_queue;
+			_heartbeat_pub = _nh.advertise(adv_ops);
+			ROS_INFO("Node heartbeat sucessfully registered");
+		} else {
+			// TODO: check result, and then?
+			ROS_INFO("Node heartbeat failed to register");
+		}
 	}
 }
 
@@ -77,5 +103,8 @@ bool HeartbeatClient::setState(heartbeat::State& to) {
 }
 
 void HeartbeatClient::alive(void) {
+	heartbeat::Heartbeat msg;
 
+	msg.node_name.data = ros::this_node::getName();
+	_heartbeat_pub.publish(msg);
 }

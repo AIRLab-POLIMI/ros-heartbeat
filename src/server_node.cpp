@@ -13,7 +13,7 @@ int main(int argc, char **argv) {
 	ros::init(argc, argv, "heartbeat_server");
 
 	ros::NodeHandle n;
-	ros::Rate loop_rate(2);
+	ros::Rate loop_rate(10);
 
 	HeartbeatServer hb(n);
 	hb.start();

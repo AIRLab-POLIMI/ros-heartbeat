@@ -8,15 +8,17 @@ int main(int argc, char **argv) {
 	heartbeat::State req_state;
 	bool success;
 
-	ros::init(argc, argv, "heartbeat_client");
+	ros::init(argc, argv, "heartbeat_client", ros::init_options::AnonymousName);
 
 	ros::NodeHandle n;
-	ros::Rate loop_rate(0.5);
+	ros::Rate loop_rate(20);
 
-	HeartbeatClient hb(n);
+	HeartbeatClient hb(n, 0.1);
 	hb.start();
 
 	while (ros::ok()) {
+		hb.alive();
+		/*
 		state = hb.getState();
 		ROS_INFO("Current: %d", state.value);
 
@@ -27,6 +29,7 @@ int main(int argc, char **argv) {
 				req_state.value, success);
 
 //		ros::spinOnce();
+		*/
 		loop_rate.sleep();
 	}
 
