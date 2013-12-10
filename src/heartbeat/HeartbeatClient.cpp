@@ -12,7 +12,7 @@ void HeartbeatClient::timer_callback(const ros::TimerEvent&) {
 void HeartbeatClient::state_callback(const heartbeat::State::ConstPtr& msg) {
 	_state_timer.stop();
 	_state_timer.start();
-	_state.value = msg->value;
+	_state = msg->value;
 	ROS_INFO("Received: %u", msg->value);
 }
 
@@ -70,7 +70,20 @@ HeartbeatClient::HeartbeatClient(ros::NodeHandle& nh, float heartbeat_timeout) :
 }
 
 HeartbeatClient::~HeartbeatClient(void) {
+	heartbeat::UnregisterNode unregister_node;
+
 	stop();
+
+	unregister_node.request.node_name.data = ros::this_node::getName();
+
+	if (!_unregister_service.call(unregister_node)) {
+		ROS_INFO("Heartbeat unregister RPC failed");
+		return;
+	}
+
+	if (unregister_node.response.success) {
+		ROS_INFO("Node unregistered from Heartbeat");
+	}
 }
 
 
@@ -84,18 +97,18 @@ void HeartbeatClient::stop(void) {
 	_spinner.stop();
 }
 
-bool HeartbeatClient::setState(heartbeat::State& to) {
+bool HeartbeatClient::setState(heartbeat::State::_value_type to_state) {
 	heartbeat::SetState req_state;
 
-	req_state.request.from.value = _state.value;
-	req_state.request.to.value = to.value;
+	req_state.request.from.value = _state;
+	req_state.request.to.value = to_state;
 
 	if (!_state_service.call(req_state)) {
 		return false;
 	}
 
-	if (req_state.response.current.value != to.value) {
-		_state.value = req_state.response.current.value;
+	if (req_state.response.current.value != to_state) {
+		_state = req_state.response.current.value;
 		return false;
 	}
 

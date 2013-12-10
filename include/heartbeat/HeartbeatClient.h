@@ -17,7 +17,7 @@ private:
 	ros::ServiceClient _register_service;
 	ros::ServiceClient _unregister_service;
 	ros::Timer _state_timer;
-	heartbeat::State _state;
+	heartbeat::State::_value_type _state;
 	std::string _state_topic;
 	std::string _heartbeat_topic;
 	float _state_timeout;
@@ -30,13 +30,13 @@ public:
 	~HeartbeatClient(void);
 	void start(void);
 	void stop(void);
-	bool setState(heartbeat::State& state);
-	heartbeat::State getState(void);
+	bool setState(heartbeat::State::_value_type state);
+	heartbeat::State::_value_type getState(void);
 	void alive(void);
 };
 
 inline
-heartbeat::State HeartbeatClient::getState(void) {
+heartbeat::State::_value_type HeartbeatClient::getState(void) {
 	return _state;
 }
 

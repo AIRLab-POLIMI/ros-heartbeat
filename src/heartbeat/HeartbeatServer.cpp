@@ -16,33 +16,79 @@ void HeartbeatServer::heartbeat_callback(
 		timer.start();
 	}
 
-	ROS_INFO("Heartbeat from node %s", msg->node_name.data.c_str());
+	ROS_DEBUG("Heartbeat from node %s", msg->node_name.data.c_str());
 }
 
 void HeartbeatServer::heartbeat_timeout(const ros::TimerEvent&) {
-	_state.value = heartbeat::State::TIMEOUT;
-	_state_pub.publish(_state);
+	_state = heartbeat::State::HALT;
+	spin();
 	ROS_WARN("Heartbeat timeout!");
 }
 
 bool HeartbeatServer::set_state(heartbeat::SetState::Request &req,
 		heartbeat::SetState::Response &res) {
 
-	if (req.from.value != _state.value) {
-		ROS_INFO("State transition %u -> %u rejected: current state is %u",
-				req.from.value, req.to.value, _state.value);
-	} else if ((_state.value == heartbeat::State::UNINIT)
-			&& (req.to.value != heartbeat::State::OK)) {
-		ROS_INFO("State transition not allowed: %u -> %u", req.from.value,
-				req.to.value);
-	} else {
-		_state.value = req.to.value;
-		_state_pub.publish(_state);
-		ROS_INFO("State updated: %u -> %u", req.from.value, _state.value);
+	/* Check if current state is consistent */
+	if (req.from.value != _state) {
+		ROS_DEBUG("State transition %u -> %u rejected: current state is %u",
+				req.from.value, req.to.value, _state);
+		return false;
 	}
 
-	res.current.value = _state.value;
-	return true;
+	/* Transition to HALT always allowed */
+	if (req.to.value == heartbeat::State::HALT) {
+		_state = req.to.value;
+	}
+
+	switch (_state) {
+	case heartbeat::State::HALT:
+		/* from HALT only ->SAFE is allowed */
+		if (req.to.value == heartbeat::State::SAFE) {
+			_state = req.to.value;
+		}
+		break;
+
+	case heartbeat::State::MANUAL:
+		/* from MANUAL everything but ->AUTO is allowed */
+		if (req.to.value != heartbeat::State::AUTO) {
+			_state = req.to.value;
+		}
+		break;
+
+	case heartbeat::State::SAFE:
+		/* from SAFE everything is allowed */
+		_state = req.to.value;
+		break;
+
+	case heartbeat::State::ASSISTED:
+		/* from MANUAL everything but ->AUTO is allowed */
+		if (req.to.value != heartbeat::State::AUTO) {
+			_state = req.to.value;
+		}
+		break;
+
+	case heartbeat::State::AUTO:
+		/* from AUTO only ->SAFE and ->ASSISTED are allowed */
+		if ((req.to.value == heartbeat::State::SAFE) || (req.to.value == heartbeat::State::ASSISTED)) {
+			_state = req.to.value;
+		}
+		break;
+
+	default:
+		ROS_DEBUG("Invalid state: %u", req.to.value);
+	}
+
+	res.current.value = _state;
+
+	if (_state == req.to.value) {
+		spin();
+		ROS_INFO("State updated: %u -> %u", req.from.value, _state);
+		return true;
+	} else {
+		ROS_WARN("State transition not allowed: %u -> %u", req.from.value,
+			req.to.value);
+		return false;
+	}
 }
 
 bool HeartbeatServer::register_node(heartbeat::RegisterNode::Request &req,
@@ -57,7 +103,7 @@ bool HeartbeatServer::register_node(heartbeat::RegisterNode::Request &req,
 		ROS_INFO("Node registered: %s", req.node_name.data.c_str());
 	} else {
 		res.success = false;
-		ROS_INFO("Node registered: %s", req.node_name.data.c_str());
+		ROS_INFO("Node was already registered: %s", req.node_name.data.c_str());
 	}
 
 	return true;
@@ -67,14 +113,16 @@ bool HeartbeatServer::unregister_node(heartbeat::UnregisterNode::Request &req,
 		heartbeat::UnregisterNode::Response &res) {
 
 	if (_registered_nodes.erase(req.node_name.data)) {
+		ROS_INFO("Node unregistered: %s", req.node_name.data.c_str());
 		res.success = true;
 	} else {
+		ROS_INFO("Node unregister failed: %s", req.node_name.data.c_str());
 		res.success = false;
 	}
 	return true;
 }
 
-HeartbeatServer::HeartbeatServer(ros::NodeHandle& nh) :
+HeartbeatServer::HeartbeatServer(ros::NodeHandle & nh) :
 		_nh(nh), _spinner(1, &_callback_queue) {
 	ros::TimerOptions timer_ops;
 	ros::AdvertiseOptions adv_ops;
@@ -113,5 +161,8 @@ void HeartbeatServer::stop(void) {
 }
 
 void HeartbeatServer::spin(void) {
-	_state_pub.publish(_state);
+	heartbeat::State msg;
+
+	msg.value = _state;
+	_state_pub.publish(msg);
 }

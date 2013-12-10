@@ -1,5 +1,6 @@
-uint8 UNINIT=0
-uint8 TIMEOUT=1
-uint8 OK=2
-uint8 FAIL=3
+uint8 HALT=0
+uint8 MANUAL=1
+uint8 SAFE=2
+uint8 ASSISTED=3
+uint8 AUTO=4
 uint8 value

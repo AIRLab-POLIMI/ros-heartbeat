@@ -4,33 +4,32 @@
 #include <stdlib.h>
 
 int main(int argc, char **argv) {
-	heartbeat::State state;
-	heartbeat::State req_state;
+	heartbeat::State::_value_type state;
+	heartbeat::State::_value_type req_state;
+	int cnt = 100;
 	bool success;
 
 	ros::init(argc, argv, "heartbeat_client", ros::init_options::AnonymousName);
 
 	ros::NodeHandle n;
-	ros::Rate loop_rate(20);
+	ros::Rate loop_rate(100);
 
 	HeartbeatClient hb(n, 0.1);
 	hb.start();
 
-	while (ros::ok()) {
+	while (--cnt > 0) {
 		hb.alive();
-		/*
 		state = hb.getState();
-		ROS_INFO("Current: %d", state.value);
+		ROS_INFO("Current: %d", state);
 
-		req_state.value = rand() % 4;
+		req_state = rand() % 5;
 		success = hb.setState(req_state);
 
-		ROS_INFO("setState (%u -> %u): %u", state.value,
-				req_state.value, success);
+		ROS_INFO("setState (%u -> %u): %u", state,
+				req_state, success);
 
 //		ros::spinOnce();
-		*/
-		loop_rate.sleep();
+ 		loop_rate.sleep();
 	}
 
 	return 0;

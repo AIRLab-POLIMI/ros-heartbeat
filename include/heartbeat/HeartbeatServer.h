@@ -19,7 +19,7 @@ private:
 	ros::ServiceServer _set_state_service;
 	ros::ServiceServer _register_node_service;
 	ros::ServiceServer _unregister_node_service;
-	heartbeat::State _state;
+	heartbeat::State::_value_type _state;
 	float _state_period;
 	std::map<std::string, ros::Timer> _registered_nodes;
 
