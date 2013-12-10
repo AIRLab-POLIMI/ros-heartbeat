@@ -87,9 +87,13 @@ add_executable(
   client_node src/client_node.cpp
 )
 
+add_executable(
+  dumb_node src/dumb_node.cpp
+)
+
 ## Add cmake target dependencies of the executable/library
 ## as an example, message headers may need to be generated before nodes
-#add_dependencies(heartbeat_server heartbeat_generate_messages_cpp)
+add_dependencies(heartbeat heartbeat_generate_messages_cpp)
 
 ## Specify libraries to link a library or executable target against
 target_link_libraries(
@@ -100,6 +104,12 @@ target_link_libraries(
 
 target_link_libraries(
   client_node
+  ${catkin_LIBRARIES}
+  heartbeat
+)
+
+target_link_libraries(
+  dumb_node
   ${catkin_LIBRARIES}
   heartbeat
 )

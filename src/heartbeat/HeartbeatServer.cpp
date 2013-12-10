@@ -22,7 +22,7 @@ void HeartbeatServer::heartbeat_callback(
 void HeartbeatServer::heartbeat_timeout(const ros::TimerEvent&) {
 	_state = heartbeat::State::HALT;
 	spin();
-	ROS_WARN("Heartbeat timeout!");
+	ROS_ERROR("Heartbeat timeout!");
 }
 
 bool HeartbeatServer::set_state(heartbeat::SetState::Request &req,
@@ -35,7 +35,12 @@ bool HeartbeatServer::set_state(heartbeat::SetState::Request &req,
 		return false;
 	}
 
-	/* Transition to HALT always allowed */
+	/* Transition to same state */
+	if (req.to.value == _state) {
+		return true;
+	}
+
+	/* Transition to HALT is always allowed */
 	if (req.to.value == heartbeat::State::HALT) {
 		_state = req.to.value;
 	}
@@ -61,15 +66,15 @@ bool HeartbeatServer::set_state(heartbeat::SetState::Request &req,
 		break;
 
 	case heartbeat::State::ASSISTED:
-		/* from MANUAL everything but ->AUTO is allowed */
+		/* from ASSISTED everything but ->AUTO is allowed */
 		if (req.to.value != heartbeat::State::AUTO) {
 			_state = req.to.value;
 		}
 		break;
 
 	case heartbeat::State::AUTO:
-		/* from AUTO only ->SAFE and ->ASSISTED are allowed */
-		if ((req.to.value == heartbeat::State::SAFE) || (req.to.value == heartbeat::State::ASSISTED)) {
+		/* from AUTO only ->SAFE are allowed */
+		if (req.to.value == heartbeat::State::SAFE) {
 			_state = req.to.value;
 		}
 		break;
@@ -95,8 +100,16 @@ bool HeartbeatServer::register_node(heartbeat::RegisterNode::Request &req,
 		heartbeat::RegisterNode::Response &res) {
 
 	if (_registered_nodes.find(req.node_name.data) == _registered_nodes.end()) {
-		ros::Timer timer = _nh.createTimer(ros::Duration(req.timeout.data),
-				&HeartbeatServer::heartbeat_timeout, this);
+		ros::TimerOptions timer_ops;
+
+		timer_ops.autostart = false;
+		timer_ops.callback = boost::bind(&HeartbeatServer::heartbeat_timeout, this, _1);
+		timer_ops.callback_queue = &_callback_queue;
+		timer_ops.oneshot = false;
+		timer_ops.period = ros::Duration(req.timeout.data);
+		timer_ops.tracked_object = ros::VoidPtr();
+		ros::Timer timer = _nh.createTimer(timer_ops);
+
 		_registered_nodes.insert(
 				std::pair<std::string, ros::Timer>(req.node_name.data, timer));
 		res.success = true;
@@ -123,7 +136,7 @@ bool HeartbeatServer::unregister_node(heartbeat::UnregisterNode::Request &req,
 }
 
 HeartbeatServer::HeartbeatServer(ros::NodeHandle & nh) :
-		_nh(nh), _spinner(1, &_callback_queue) {
+		_nh(nh), _spinner(10, &_callback_queue) {
 	ros::TimerOptions timer_ops;
 	ros::AdvertiseOptions adv_ops;
 	ros::SubscribeOptions sub_ops;
@@ -131,7 +144,7 @@ HeartbeatServer::HeartbeatServer(ros::NodeHandle & nh) :
 	ros::param::param<float>("/heartbeat/state_update_period", _state_period,
 			1.0);
 
-	sub_ops.init<heartbeat::Heartbeat>("heartbeat", 1,
+	sub_ops.init<heartbeat::Heartbeat>("heartbeat", 100,
 			boost::bind(&HeartbeatServer::heartbeat_callback, this, _1));
 	sub_ops.tracked_object = ros::VoidPtr();
 	sub_ops.callback_queue = &_callback_queue;

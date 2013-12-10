@@ -11,16 +11,18 @@ int main(int argc, char **argv) {
 
 	srand((time(NULL) & 0xFFFF) | (getpid() << 16));
 
-	ros::init(argc, argv, "heartbeat_dumb", ros::init_options::AnonymousName);
+	ros::init(argc, argv, "heartbeat_client", ros::init_options::AnonymousName);
 
 	ros::NodeHandle n;
-	ros::Rate loop_rate(100);
+	ros::Rate loop_rate(20);
 
-	HeartbeatClient hb(n);
+	HeartbeatClient hb(n, 0.2);
 	hb.start();
 
 	while (--cnt > 0) {
-		if (cnt % 1 == 0) {
+		hb.alive();
+
+		if (cnt % 10 == 0) {
 			state = hb.getState();
 			ROS_INFO("Current: %d", state);
 

@@ -6,14 +6,14 @@
 
 
 void HeartbeatClient::timer_callback(const ros::TimerEvent&) {
-	ROS_INFO("Timeout!");
+	ROS_WARN("Timeout!");
 }
 
 void HeartbeatClient::state_callback(const heartbeat::State::ConstPtr& msg) {
 	_state_timer.stop();
 	_state_timer.start();
 	_state = msg->value;
-	ROS_INFO("Received: %u", msg->value);
+	ROS_DEBUG("Received: %u", msg->value);
 }
 
 HeartbeatClient::HeartbeatClient(ros::NodeHandle& nh, float heartbeat_timeout) :
@@ -64,7 +64,7 @@ HeartbeatClient::HeartbeatClient(ros::NodeHandle& nh, float heartbeat_timeout) :
 			ROS_INFO("Node heartbeat sucessfully registered");
 		} else {
 			// TODO: check result, and then?
-			ROS_INFO("Node heartbeat failed to register");
+			ROS_WARN("Node heartbeat failed to register");
 		}
 	}
 }
@@ -72,18 +72,18 @@ HeartbeatClient::HeartbeatClient(ros::NodeHandle& nh, float heartbeat_timeout) :
 HeartbeatClient::~HeartbeatClient(void) {
 	heartbeat::UnregisterNode unregister_node;
 
-	stop();
-
 	unregister_node.request.node_name.data = ros::this_node::getName();
 
 	if (!_unregister_service.call(unregister_node)) {
-		ROS_INFO("Heartbeat unregister RPC failed");
+		ROS_WARN("Heartbeat unregister RPC failed");
 		return;
 	}
 
 	if (unregister_node.response.success) {
 		ROS_INFO("Node unregistered from Heartbeat");
 	}
+
+	stop();
 }
 
 
