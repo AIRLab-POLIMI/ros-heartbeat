@@ -159,6 +159,8 @@ HeartbeatServer::HeartbeatServer(ros::NodeHandle & nh) :
 	_unregister_node_service = _nh.advertiseService(
 			"/heartbeat/unregister_node", &HeartbeatServer::unregister_node,
 			this);
+
+	_state = heartbeat::State::HALT; /* TODO: rosparam */
 }
 
 HeartbeatServer::~HeartbeatServer(void) {

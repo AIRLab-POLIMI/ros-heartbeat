@@ -70,17 +70,19 @@ HeartbeatClient::HeartbeatClient(ros::NodeHandle& nh, float heartbeat_timeout) :
 }
 
 HeartbeatClient::~HeartbeatClient(void) {
-	heartbeat::UnregisterNode unregister_node;
+	if (_heartbeat_timeout != 0) {
+		heartbeat::UnregisterNode unregister_node;
 
-	unregister_node.request.node_name.data = ros::this_node::getName();
+		unregister_node.request.node_name.data = ros::this_node::getName();
 
-	if (!_unregister_service.call(unregister_node)) {
-		ROS_WARN("Heartbeat unregister RPC failed");
-		return;
-	}
+		if (!_unregister_service.call(unregister_node)) {
+			ROS_WARN("Heartbeat unregister RPC failed");
+			return;
+		}
 
-	if (unregister_node.response.success) {
-		ROS_INFO("Node unregistered from Heartbeat");
+		if (unregister_node.response.success) {
+			ROS_INFO("Node unregistered from Heartbeat");
+		}
 	}
 
 	stop();

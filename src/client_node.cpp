@@ -9,6 +9,8 @@ int main(int argc, char **argv) {
 	int cnt = 1000;
 	bool success;
 
+	state = heartbeat::State::HALT;
+
 	srand((time(NULL) & 0xFFFF) | (getpid() << 16));
 
 	ros::init(argc, argv, "heartbeat_dumb", ros::init_options::AnonymousName);
