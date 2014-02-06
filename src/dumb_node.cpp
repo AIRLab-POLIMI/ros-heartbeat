@@ -11,7 +11,8 @@ int main(int argc, char **argv) {
 
 	srand((time(NULL) & 0xFFFF) | (getpid() << 16));
 
-	ros::init(argc, argv, "heartbeat_client", ros::init_options::AnonymousName);
+//	ros::init(argc, argv, "heartbeat_dumb", ros::init_options::AnonymousName);
+	ros::init(argc, argv, "heartbeat_dumb");
 
 	ros::NodeHandle n;
 	ros::Rate loop_rate(20);

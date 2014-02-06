@@ -91,33 +91,38 @@ bool HeartbeatServer::set_state(heartbeat::SetState::Request &req,
 		return true;
 	} else {
 		ROS_WARN("State transition not allowed: %u -> %u", req.from.value,
-			req.to.value);
+				req.to.value);
 		return false;
 	}
 }
 
 bool HeartbeatServer::register_node(heartbeat::RegisterNode::Request &req,
 		heartbeat::RegisterNode::Response &res) {
+	ros::TimerOptions timer_ops;
 
-	if (_registered_nodes.find(req.node_name.data) == _registered_nodes.end()) {
-		ros::TimerOptions timer_ops;
-
-		timer_ops.autostart = false;
-		timer_ops.callback = boost::bind(&HeartbeatServer::heartbeat_timeout, this, _1);
-		timer_ops.callback_queue = &_callback_queue;
-		timer_ops.oneshot = false;
-		timer_ops.period = ros::Duration(req.timeout.data);
-		timer_ops.tracked_object = ros::VoidPtr();
-		ros::Timer timer = _nh.createTimer(timer_ops);
-
-		_registered_nodes.insert(
-				std::pair<std::string, ros::Timer>(req.node_name.data, timer));
-		res.success = true;
-		ROS_INFO("Node registered: %s", req.node_name.data.c_str());
-	} else {
-		res.success = false;
-		ROS_INFO("Node was already registered: %s", req.node_name.data.c_str());
+	/* No mutex here, server requests are serialized - to be checked. */
+	if (_registered_nodes.find(req.node_name.data) != _registered_nodes.end()) {
+		if (_registered_nodes.erase(req.node_name.data)) {
+			ROS_INFO("Node replaced: %s", req.node_name.data.c_str());
+		} else {
+			ROS_INFO("Node unregister failed: %s", req.node_name.data.c_str());
+			res.success = false;
+		}
 	}
+
+	timer_ops.autostart = false;
+	timer_ops.callback = boost::bind(&HeartbeatServer::heartbeat_timeout, this,
+			_1);
+	timer_ops.callback_queue = &_callback_queue;
+	timer_ops.oneshot = false;
+	timer_ops.period = ros::Duration(req.timeout.data);
+	timer_ops.tracked_object = ros::VoidPtr();
+	ros::Timer timer = _nh.createTimer(timer_ops);
+
+	_registered_nodes.insert(
+			std::pair<std::string, ros::Timer>(req.node_name.data, timer));
+	res.success = true;
+	ROS_INFO("Node registered: %s", req.node_name.data.c_str());
 
 	return true;
 }
